@@ -11,12 +11,6 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'email': {'required': True}}
 
 
-class GroupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Group
-        fields = ['id', 'name']
-
-
 class BikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bike

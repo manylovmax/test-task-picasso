@@ -1,12 +1,12 @@
 services:
-  web:
+  app:
     restart: unless-stopped
     build:
       context: ./app
     env_file:
       - .env.app
     ports:
-      - 8000:8000
+      - 80:80
     depends_on:
       - db
       - redis
@@ -15,7 +15,7 @@ services:
     image: postgres
     restart: unless-stopped
     env_file:
-      - .env.
+      - .env.db
       
   redis:
     image: redis

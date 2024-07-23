@@ -8,6 +8,9 @@ class Bike(models.Model):
     price_per_hour = models.FloatField(blank=False)
     is_rent = models.BooleanField(default=False)
 
+    def __str__(self):
+        return " ".join([self.brand, self.model])
+
 
 class Rent(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=False)
@@ -16,3 +19,6 @@ class Rent(models.Model):
     finish_at = models.DateTimeField(blank=True, null=True)
     price = models.FloatField(null=True)
     paid = models.BooleanField(default=False)
+
+    def __str__(self):
+        return str(self.pk)
