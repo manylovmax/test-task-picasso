@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rents.serializers import UserSerializer, BikeSerializer, RentSerializer
 from rents.models import Bike, Rent
 
-from rents.tasks import count_price
+from rents.tasks import calculate_price
 
 
 @api_view(['POST'])
@@ -72,7 +72,7 @@ def finish_the_rent(request: Request, pk: int):
 
     rent.finish_at = datetime.now()
     rent.save()
-    count_price.delay(rent.id)
+    calculate_price.delay(rent.id)
 
     return Response({}, status=status.HTTP_200_OK)
 
