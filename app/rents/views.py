@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from django.contrib.auth.models import User
-from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.request import Request
@@ -29,20 +28,8 @@ def create_user(request):
         return Response(serialized._errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class BikeViewSet(viewsets.ModelViewSet):
-    queryset = Bike.objects.all().order_by('brand')
-    serializer_class = BikeSerializer
-    permission_classes = [permissions.AllowAny]
-
-
-class RentViewSet(viewsets.ModelViewSet):
-    queryset = Rent.objects.all().order_by('start_at')
-    serializer_class = RentSerializer
-    permission_classes = [permissions.AllowAny]
-
-
 @api_view(['GET'])
-#@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def bikes_for_rent(request: Request):
     serializer = BikeSerializer(Bike.objects.filter(is_rent=False).order_by('brand'), many=True)
 
@@ -50,7 +37,7 @@ def bikes_for_rent(request: Request):
 
 
 @api_view(['POST'])
-#@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def rent_the_bike(request: Request, pk: int):
     user = User.objects.filter(username=request.user.username).first()
     if not user:
@@ -74,7 +61,7 @@ def rent_the_bike(request: Request, pk: int):
 
 
 @api_view(['POST'])
-#@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def finish_the_rent(request: Request, pk: int):
     rent = Rent.objects.filter(pk=pk, user=request.user).first()
     if not rent:
@@ -88,3 +75,54 @@ def finish_the_rent(request: Request, pk: int):
     count_price.delay(rent.id)
 
     return Response({}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_rent_price(request: Request, pk: int):
+    rent = Rent.objects.filter(pk=pk, user=request.user).first()
+    if not rent:    
+        return Response({'detail': 'Rent not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if not rent.price:
+        return Response({'detail': 'Price is not calculated yet'}, status=status.HTTP_200_OK)
+
+    return Response({'rent_price': rent.price}, status=status.HTTP_200_OK)
+        
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def pay_for_rent(request: Request, pk: int):
+    rent = Rent.objects.filter(pk=pk, user=request.user).first()
+    if not rent:
+        return Response({'detail': 'Rent not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if not rent.price:
+        return Response({'detail': 'Price is not calculated yet'}, status=status.HTTP_200_OK)
+    
+    if rent.paid:
+        return Response({'detail': 'Rent already paid'}, status=status.HTTP_200_OK)
+    
+    rent.paid = True
+    rent.save()
+    data = RentSerializer(rent).data
+    data['user'] = rent.user.username
+    data['bike'] = ' '.join([rent.bike.brand, rent.bike.model])
+
+    return Response(data, status=status.HTTP_200_OK)
+        
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_rents(request: Request):
+    rents = Rent.objects.filter(user=request.user).select_related('bike').all()
+    
+    data = list()
+    for rent in rents:
+        r = RentSerializer(rent).data
+        r['bike'] = ' '.join([rent.bike.brand, rent.bike.model])
+        r['user'] = rent.user.username
+        data.append(r)
+        
+
+    return Response(data, status=status.HTTP_200_OK)
