@@ -15,7 +15,7 @@ from rents.tasks import calculate_price
 
 
 @api_view(['POST'])
-def create_user(request):
+def register(request):
     serialized = UserSerializer(data=request.data)
     if serialized.is_valid():
         User.objects.create_user(
