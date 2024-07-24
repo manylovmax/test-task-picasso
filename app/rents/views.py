@@ -23,7 +23,7 @@ def create_user(request):
             serialized.data['email'],
             serialized.data['password']
         )
-        return Response(serialized.data, status=status.HTTP_201_CREATED)
+        return Response({'detail': 'Пользователь зарегистрирован'}, status=status.HTTP_201_CREATED)
     else:
         return Response(serialized._errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -39,16 +39,14 @@ def bikes_for_rent(request: Request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def rent_the_bike(request: Request, pk: int):
-    user = User.objects.filter(username=request.user.username).first()
-    if not user:
-        return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-    serializer = UserSerializer(user)
-
+    rent = Rent.objects.filter(user=request.user, paid=False).first()
+    if rent:
+        return Response({'detail': 'Нельзя арендовать больше велосипедов. Сначала оплатите аренду'}, status=status.HTTP_200_OK)
     bike = Bike.objects.filter(pk=pk, is_rent=False).first()
     if not bike:
-        return Response({'detail': 'Bike not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Велосипед не найден'}, status=status.HTTP_404_NOT_FOUND)
     if bike.is_rent:
-        return Response({'detail': 'Bike is being rent'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        return Response({'detail': 'Велосипед арендован'}, status=status.HTTP_200_OK)
     
     bike.is_rent = True
     bike.save()
@@ -65,7 +63,7 @@ def rent_the_bike(request: Request, pk: int):
 def finish_the_rent(request: Request, pk: int):
     rent = Rent.objects.filter(pk=pk, user=request.user).first()
     if not rent:
-        return Response({'detail': 'Rent not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Запись об аренде не найдена'}, status=status.HTTP_404_NOT_FOUND)
     
     rent.bike.is_rent = False
     rent.bike.save()
@@ -82,10 +80,10 @@ def finish_the_rent(request: Request, pk: int):
 def get_rent_price(request: Request, pk: int):
     rent = Rent.objects.filter(pk=pk, user=request.user).first()
     if not rent:    
-        return Response({'detail': 'Rent not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Запись об аренде не найдена'}, status=status.HTTP_404_NOT_FOUND)
     
     if not rent.price:
-        return Response({'detail': 'Price is not calculated yet'}, status=status.HTTP_200_OK)
+        return Response({'detail': 'Цена аренды еще не подсчитана'}, status=status.HTTP_200_OK)
 
     return Response({'rent_price': rent.price}, status=status.HTTP_200_OK)
         
@@ -93,15 +91,15 @@ def get_rent_price(request: Request, pk: int):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def pay_for_rent(request: Request, pk: int):
-    rent = Rent.objects.filter(pk=pk, user=request.user).first()
+    rent = Rent.objects.filter(pk=pk, user=request.user).select_related('bike', 'user').first()
     if not rent:
-        return Response({'detail': 'Rent not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Запись об аренде не найдена'}, status=status.HTTP_404_NOT_FOUND)
     
     if not rent.price:
-        return Response({'detail': 'Price is not calculated yet'}, status=status.HTTP_200_OK)
+        return Response({'detail': 'Цена аренды еще не подсчитана'}, status=status.HTTP_200_OK)
     
     if rent.paid:
-        return Response({'detail': 'Rent already paid'}, status=status.HTTP_200_OK)
+        return Response({'detail': 'Аренда уже оплачена'}, status=status.HTTP_200_OK)
     
     rent.paid = True
     rent.save()
@@ -115,7 +113,7 @@ def pay_for_rent(request: Request, pk: int):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_my_rents(request: Request):
-    rents = Rent.objects.filter(user=request.user).select_related('bike').all()
+    rents = Rent.objects.filter(user=request.user).select_related('bike', 'user').all()
     
     data = list()
     for rent in rents:
