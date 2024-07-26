@@ -42,7 +42,7 @@ def rent_the_bike(request: Request, pk: int):
     rent = Rent.objects.filter(user=request.user, paid=False).first()
     if rent:
         return Response({'detail': 'Нельзя арендовать больше велосипедов. Сначала оплатите аренду'}, status=status.HTTP_200_OK)
-    bike = Bike.objects.filter(pk=pk, is_rent=False).first()
+    bike = Bike.objects.filter(pk=pk).first()
     if not bike:
         return Response({'detail': 'Велосипед не найден'}, status=status.HTTP_404_NOT_FOUND)
     if bike.is_rent:
