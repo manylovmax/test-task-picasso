@@ -161,7 +161,6 @@ class TestFinishTheRentView:
     def setUp(self):
         user = User.objects.create_user(username='testuser1', password='12345')
         bike1 = Bike.objects.create(brand='Brand 1', model='Model 1', price_per_hour=100)
-        Bike.objects.create(brand='Brand 2', model='Model 2', price_per_hour=200)
         Rent.objects.create(bike=bike1, user=user, start_at=datetime.now())
         return user
     
@@ -193,12 +192,11 @@ class TestFinishTheRentView:
         token = resp.data['access']
         client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
 
-        rent = Rent.objects.first()
-        resp = client.post('/finish-the-rent/' + str(rent.id) + '1')
+        resp = client.post('/finish-the-rent/100')
         assert resp.status_code == 404
+        assert resp.data == {'detail': 'Запись об аренде не найдена'}
 
 
-    
     @pytest.mark.django_db
     def test_rent_already_finished(self):
         user = self.setUp()
@@ -214,3 +212,54 @@ class TestFinishTheRentView:
         resp = client.post('/finish-the-rent/' + str(rent.id))
         assert resp.status_code == 200
         assert resp.data == {'detail': 'Аренда уже завершена'}
+
+
+class TestGetRentPriceView:
+
+    def setUp(self):
+        user = User.objects.create_user(username='testuser1', password='12345')
+        bike1 = Bike.objects.create(brand='Brand 1', model='Model 1', price_per_hour=100)
+        Rent.objects.create(bike=bike1, user=user, start_at=datetime.now(), price=100)
+        return user
+    
+    @pytest.mark.django_db
+    def test_success(self):
+        user = self.setUp()
+        # Авторизация
+        client = APIClient()
+        resp = client.post('/api/token/', {'username': 'testuser1', 'password': '12345'}, format='json')
+        token = resp.data['access']
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+        rent = Rent.objects.first()
+        resp = client.get('/get-rent-price/' + str(rent.id))
+        assert resp.status_code == 200
+        assert resp.data == {'price': 100}
+
+    
+    @pytest.mark.django_db
+    def test_not_found(self):
+        user = self.setUp()
+        # Авторизация
+        client = APIClient()
+        resp = client.post('/api/token/', {'username': 'testuser1', 'password': '12345'}, format='json')
+        token = resp.data['access']
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+        resp = client.get('/get-rent-price/100')
+        assert resp.status_code == 404
+        assert resp.data == {'detail': 'Запись об аренде не найдена'}
+
+    
+    @pytest.mark.django_db
+    def test_price_not_calculated(self):
+        user = self.setUp()
+        # Авторизация
+        client = APIClient()
+        resp = client.post('/api/token/', {'username': 'testuser1', 'password': '12345'}, format='json')
+        token = resp.data['access']
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+        rent = Rent.objects.first()
+        rent.price = None
+        rent.save()
+        resp = client.get('/get-rent-price/' + str(rent.id))
+        assert resp.status_code == 200
+        assert resp.data == {'detail': 'Цена аренды еще не подсчитана'}
