@@ -318,3 +318,28 @@ class TestPayForRentView:
         resp = client.post('/pay-for-rent/' + str(rent.id))
         assert resp.status_code == 200
         assert resp.data == {'detail': 'Цена аренды еще не подсчитана'}
+
+
+class TestGetMyRentsView:
+
+    def setUp(self):
+        user = User.objects.create_user(username='testuser1', password='12345')
+        bike1 = Bike.objects.create(brand='Brand 1', model='Model 1', price_per_hour=100)
+        Rent.objects.create(bike=bike1, user=user, start_at=datetime.now(), price=100)
+        return user
+    
+    @pytest.mark.django_db
+    def test_success(self):
+        user = self.setUp()
+        # Авторизация
+        client = APIClient()
+        resp = client.post('/api/token/', {'username': 'testuser1', 'password': '12345'}, format='json')
+        token = resp.data['access']
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+        rent = Rent.objects.first()
+        resp = client.get('/get-my-rents/')
+        assert resp.status_code == 200
+        data = RentSerializer(rent).data
+        data['user'] = rent.user.username
+        data['bike'] = ' '.join([rent.bike.brand, rent.bike.model])
+        assert resp.data == [data]
