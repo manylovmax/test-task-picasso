@@ -65,6 +65,9 @@ def finish_the_rent(request: Request, pk: int):
     if not rent:
         return Response({'detail': 'Запись об аренде не найдена'}, status=status.HTTP_404_NOT_FOUND)
     
+    if rent.finish_at:
+        return Response({'detail': 'Аренда уже завершена'}, status=status.HTTP_200_OK)
+    
     rent.bike.is_rent = False
     rent.bike.save()
 
