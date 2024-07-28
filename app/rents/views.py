@@ -88,7 +88,7 @@ def get_rent_price(request: Request, pk: int):
     if not rent.price:
         return Response({'detail': 'Цена аренды еще не подсчитана'}, status=status.HTTP_200_OK)
 
-    return Response({'rent_price': rent.price}, status=status.HTTP_200_OK)
+    return Response({'price': rent.price}, status=status.HTTP_200_OK)
         
 
 @api_view(['POST'])
