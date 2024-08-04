@@ -10,6 +10,18 @@ services:
     depends_on:
       - db
       - redis
+      - celery
+
+  celery:
+    restart: unless-stopped
+    build:
+      context: ./app
+    env_file:
+      - .env.app
+    command: celery -A cyclerent worker -l info
+    depends_on:
+      - db
+      - redis
 
   db:
     image: postgres:16.3-alpine3.20

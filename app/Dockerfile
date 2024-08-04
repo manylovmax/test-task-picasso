@@ -14,4 +14,4 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 # copy project
 COPY . .
-CMD python manage.py runserver 0.0.0.0:80 && celery -A cyclerent worker -l info
+CMD python manage.py runserver 0.0.0.0:80
